@@ -10,3 +10,4 @@ add_subdirectory(src)
 
 # include directories for the entire project
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs/argtable3/)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs/embedded_cli/)
