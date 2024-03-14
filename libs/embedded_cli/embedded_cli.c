@@ -494,3 +494,8 @@ void embedded_cli_prompt(struct embedded_cli *cli)
 {
     cli_puts(cli, cli->prompt);
 }
+
+void embedded_cli_response(struct embedded_cli *cli, const char *s)
+{
+    cli_puts(cli, s);
+}

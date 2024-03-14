@@ -145,6 +145,13 @@ int embedded_cli_argc(struct embedded_cli *cli, char ***argv);
 void embedded_cli_prompt(struct embedded_cli *cli);
 
 /**
+ * Outputs the CLI response
+ * This should be called after @ref embedded_cli_argc or @ref
+ * embedded_cli_get_line has been called and the command fully processed
+ */
+void embedded_cli_response(struct embedded_cli *cli, const char *s);
+
+/**
  * Retrieve a history command line
  * @param history_pos 0 is the most recent command, 1 is the one before that
  * etc...
