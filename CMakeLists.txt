@@ -11,3 +11,11 @@ add_subdirectory(src)
 # include directories for the entire project
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs/argtable3/)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/libs/embedded_cli/)
+
+# Define a custom target for cleaning specific build artifacts
+add_custom_target(clean_it
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/src
+    COMMAND ${CMAKE_COMMAND} -E remove_directory ${CMAKE_BINARY_DIR}/lib
+    COMMENT "Cleaned specific build artifacts"
+)
+

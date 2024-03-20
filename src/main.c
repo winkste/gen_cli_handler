@@ -4,7 +4,7 @@
 * SHORT DESCRIPTION:
 *   CLI basics using argtable3 and embedded_cli libraries. 
 *
-* DETAILED DESCRIPTION :     
+* DETAILED DESCRIPTION : --- 
 *
 * AUTHOR :    Stephan Wink        CREATED ON :    03. Mar. 2024
 *
@@ -44,7 +44,6 @@
 
 /***************************************************************************************/
 /* Local constant defines */
-#define MAX_ARGS 10 // Maximum number of arguments
 
 /***************************************************************************************/
 /* Local function like makros */
@@ -62,8 +61,6 @@ static wserr_t AddCommand_t(wsconsole_cmdItem_tp cmd_pt, FILE *resp_fp);
 /***************************************************************************************/
 /* Local variables: */
 static wsconsole_tp console_xs;
-static wsconsole_config_t consoleConfig_sts;
-
 
 /***************************************************************************************/
 /* Global functions (unlimited visibility) */
@@ -74,15 +71,16 @@ static wsconsole_config_t consoleConfig_sts;
 *//*-----------------------------------------------------------------------------------*/
 int main(void)
 {
-    wserr_LOG(wsconsole_InitParameter_t(&consoleConfig_sts));
-    console_xs = wsconsole_AllocateConsole_t();
+    wsconsole_config_t consoleConfig_sts;
+    wsconsole_cmdItem_t command_st;
 
+    wserr_LOG(wsconsole_InitParameter_t(&consoleConfig_sts));
     consoleConfig_sts.getCharFunc_fp = getch;
     consoleConfig_sts.intHandler_fp = intHandler;
     consoleConfig_sts.putCharFunc_fp = posix_putch;
-    wserr_LOG(wsconsole_Init_t(console_xs, &consoleConfig_sts));
 
-    wsconsole_cmdItem_t command_st;
+    console_xs = wsconsole_AllocateConsole_t();
+    wserr_LOG(wsconsole_Init_t(console_xs, &consoleConfig_sts));
       
     command_st.command = "add";
     command_st.hint = NULL;
@@ -94,30 +92,6 @@ int main(void)
     struct arg_end *end = arg_end(20);
     void *argtable[] = {add_args[0], add_args[1], end};
     command_st.argtable = argtable;
-#ifdef winkste 
-    wsconsole_cmdItem_t *cmd = &command_st;
-    struct arg_int *arg_test;
-    struct arg_int* *p1 = (struct arg_int**)cmd->argtable;
-    arg_test = *p1;
-    p1++;
-    arg_test = *p1;
-    //struct arg_int* arg1 = (struct arg_int*)cmd->argtable[0];
-    //struct arg_int* arg2 = (struct arg_int*)cmd->argtable[1];
-    //struct arg_end* end = (struct arg_end*)cmd->argtable[2];
-    void *arvoid = argtable;
-    arvoid++;
-    //arg_test = (struct arg_int *)*arvoid;
-    long *arglong = argtable;
-    long val1 = *arglong;
-    arglong++;
-    long val2 = *arglong;
-    arg_test = (struct arg_int *) val1;
-    arg_test = (struct arg_int *) val2;
-    void **argtable2 = argtable;
-    arg_test = (struct arg_int *) *argtable2;
-    *argtable2++;
-    arg_test = (struct arg_int *) *argtable2;
-#endif
 
     wserr_LOG(wsconsole_RegisterCommand_t(console_xs, &command_st));
 
@@ -204,6 +178,14 @@ static void posix_putch(void *data, char ch, bool is_last)
         fflush(fp);
 }
 
+/**--------------------------------------------------------------------------------------
+ * @brief     This is the callback function to add two numbers.
+ * @author    S. Wink
+ * @date      14. Mar. 2024
+ * @param     cmd_pt     pointer to command
+ * @param     resp_fp    FILE object to create the response
+ * @return    wserr_OK
+*//*-----------------------------------------------------------------------------------*/
 static wserr_t AddCommand_t(wsconsole_cmdItem_tp cmd_pt, FILE *resp_fp)
 {
     int lineFeed_i = 0;
@@ -220,12 +202,7 @@ static wserr_t AddCommand_t(wsconsole_cmdItem_tp cmd_pt, FILE *resp_fp)
     result = *arg1_ptr->ival + *arg2_ptr->ival;
 
     fprintf(resp_fp, "The result is: %d\n", result);
-/*
-    for (int i = 0; i < argc; i++)
-    {
-        lineFeed_i += sprintf(resp_pc + lineFeed_i, "Arg %d/%d: '%s'\n", i, argc, argv[i]);
-    }
-*/
+
     return wserr_OK;
 }
 

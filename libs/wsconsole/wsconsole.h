@@ -95,9 +95,8 @@ typedef struct wsconsole_cmdItem_tag *wsconsole_cmdItem_tp;
 
 /**
  * @brief Console command callback function
- * @param argc number of arguments
- * @param argv array with argc entries, each pointing to a zero-terminated string argument
- * @param resp_pc pointer to zero terminated response string
+ * @param cmd_pt            pointer to the command structure
+ * @param respStream_fp     response stream pointer
  * @return console command return code, 0 indicates "success"
  */
 //typedef wserr_t (*wsconsole_callBackFunc_t)(int argc, char** argv, FILE *respStream_fp);
@@ -111,29 +110,37 @@ typedef char (*wsconsole_getCharacter_t)(void);
 
 /**
  * @brief Console put character function
- * @param *data_ptr     pointer to data channel
+ * @param *data_pv      pointer to data channel
  * @param ch_c          character to print to channel
  * @param isLast_bol    is this the last character, than flush the complete message
  * @return none
  */
-typedef void (*wsconsole_putCharacter_t)(void *data_ptr, char ch_c, bool isLast_bol);
+typedef void (*wsconsole_putCharacter_t)(void *data_pv, char ch_c, bool isLast_bol);
 
 /**
  * @brief Console interrupt handler
- * @param dummy     dummy parameter to meet structure
+ * @param dummy_i     dummy parameter to meet structure
  * @return none
  */
-typedef void (*wsconsole_intHandler_t)(int dummy);
+typedef void (*wsconsole_intHandler_t)(int dummy_i);
 
 /**
  * @brief Parameters for console initialization
  */
 typedef struct wsconsole_config_tag
 {
-    //size_t maxCmdLineLength_st;  //!< length of command line buffer, in bytes
-    //size_t maxCmdLineArgs_st;    //!< maximum number of command line arguments to parse
+    /**
+     * Function pointer interface to get a character by polling.
+     */
     wsconsole_getCharacter_t getCharFunc_fp;
+    /**
+     * Function pointer interface to print a character to the outstream
+     */
     wsconsole_putCharacter_t putCharFunc_fp;
+    /**
+     * Function pointer interface to the interrupt handler for special 
+     * characters.
+     */
     wsconsole_intHandler_t intHandler_fp;
 } wsconsole_config_t;
 
@@ -154,12 +161,10 @@ typedef struct wsconsole_cmdItem_tag{
     const char *help;
     /**
      * Hint text, usually lists possible arguments.
-     * If set to NULL, and 'argtable' field is non-NULL, hint will be generated
-     * automatically
      */
     const char *hint;
     /**
-     * Pointer to a function which implements the command.
+     * Pointer to a callback function to handle the command.
      */
     wsconsole_callBackFunc_t func;
     /**
@@ -172,7 +177,7 @@ typedef struct wsconsole_cmdItem_tag{
 } wsconsole_cmdItem_t;
 
 /**
- * @brief Opaque console object
+ * @brief Abstract datatype console object
  */
 typedef struct wsconsole_tag *wsconsole_tp;
 
