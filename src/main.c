@@ -30,16 +30,13 @@
 *
 ****************************************************************************************/
 
-//#define OLD_STYLE
-
-#ifndef OLD_STYLE
 /***************************************************************************************/
 /* Include Interfaces */
+#include <unistd.h>
+#include <termios.h>
+
 #include "wsconsole.h"
 #include "wserr.h"
-#include "termios.h"
-#include <unistd.h>
-
 #include "argtable3.h"
 
 /***************************************************************************************/
@@ -53,13 +50,16 @@
 
 /***************************************************************************************/
 /* Local functions prototypes: */
-static char getch(void);
-static void intHandler(int dummy);
-static void posix_putch(void *data, char ch, bool is_last);
+static char GetCharacter_c(void);
+static void InterruptHandler_vd(int dummy);
+static void PosixPutCharacter_vd(void *data_vp, char character_c, bool isLastChar_b);
 static wserr_t AddCommand_t(wsconsole_cmdItem_tp cmd_pt, FILE *resp_fp);
 
 /***************************************************************************************/
 /* Local variables: */
+/**
+ * Object of the console.
+ */
 static wsconsole_tp console_xs;
 
 /***************************************************************************************/
@@ -75,9 +75,9 @@ int main(void)
     wsconsole_cmdItem_t command_st;
 
     wserr_LOG(wsconsole_InitParameter_t(&consoleConfig_sts));
-    consoleConfig_sts.getCharFunc_fp = getch;
-    consoleConfig_sts.intHandler_fp = intHandler;
-    consoleConfig_sts.putCharFunc_fp = posix_putch;
+    consoleConfig_sts.getCharFunc_fp = GetCharacter_c;
+    consoleConfig_sts.intHandler_fp = InterruptHandler_vd;
+    consoleConfig_sts.putCharFunc_fp = PosixPutCharacter_vd;
 
     console_xs = wsconsole_AllocateConsole_t();
     wserr_LOG(wsconsole_Init_t(console_xs, &consoleConfig_sts));
@@ -113,17 +113,17 @@ int main(void)
  * @date      03. Mar. 2024
  * @return    one character retrieved by stdin
 *//*-----------------------------------------------------------------------------------*/
-static char getch(void)
+static char GetCharacter_c(void)
 {
-    char buf = 0;
-    struct termios old = {0};
-    if (tcgetattr(0, &old) < 0)
+    char buffer_c = 0;
+    struct termios old_st = {0};
+    if (tcgetattr(0, &old_st) < 0)
         perror("tcsetattr()");
 
-    struct termios raw = old;
+    struct termios raw = old_st;
 
-    // Do what cfmakeraw does (Using --std=c99 means that cfmakeraw isn't
-    // available)
+    /* Do what cfmakeraw does (Using --std=c99 means that cfmakeraw isn't
+    available) */
     raw.c_iflag &=
         ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
     raw.c_oflag &= ~OPOST;
@@ -137,27 +137,27 @@ static char getch(void)
     if (tcsetattr(0, TCSANOW, &raw) < 0)
         perror("tcsetattr ICANON");
 
-    if (read(0, &buf, 1) < 0)
+    if (read(0, &buffer_c, 1) < 0)
         perror("read()");
 
-    if (tcsetattr(0, TCSADRAIN, &old) < 0)
+    if (tcsetattr(0, TCSADRAIN, &old_st) < 0)
         perror("tcsetattr ~ICANON");
-    return (buf);
+    return (buffer_c);
 }
 
 /**--------------------------------------------------------------------------------------
- * @brief     The intHandler function is a signal handler for SIGINT (Ctrl-C). It's used
- *            to capture Ctrl-C and interrupt the CLI input.
+ * @brief     The interrupt handler function is a signal handler for SIGINT (Ctrl-C). 
+ *            It's used to capture Ctrl-C and interrupt the CLI input.
  * @author    S. Wink
  * @date      03. Mar. 2024
  * @param     dummy             input data pointer
  * @return    none
 *//*-----------------------------------------------------------------------------------*/
-static void intHandler(int dummy)
+static void InterruptHandler_vd(int dummy)
 {
+    /*Not working on the macbook*/
     (void)dummy;
     printf("Ctrl-C received!\n");
-    //embedded_cli_insert_char(&cli, '\x03');
 }
 
 /**--------------------------------------------------------------------------------------
@@ -165,17 +165,18 @@ static void intHandler(int dummy)
  *            callback from embedded cli.
  * @author    S. Wink
  * @date      03. Mar. 2024
- * @param     *data     pointer to data channel
- * @param     ch        character to print to channel
- * @param     is_last   is this the last character, than flush the complete message
+ * @param     *data_vp      pointer to data channel
+ * @param     character_c   character to print to channel
+ * @param     isLastChar_b  is this the last character, than flush the complete message
  * @return    none
 *//*-----------------------------------------------------------------------------------*/
-static void posix_putch(void *data, char ch, bool is_last)
+static void PosixPutCharacter_vd(void *data_vp, char character_c, bool isLastChar_b)
 {
-    FILE *fp = data;
-    fputc(ch, fp);
-    if (is_last)
-        fflush(fp);
+    FILE *outStream_fp = data_vp;
+
+    fputc(character_c, outStream_fp);
+    if(isLastChar_b)
+        fflush(outStream_fp);
 }
 
 /**--------------------------------------------------------------------------------------
@@ -202,239 +203,5 @@ static wserr_t AddCommand_t(wsconsole_cmdItem_tp cmd_pt, FILE *resp_fp)
     result = *arg1_ptr->ival + *arg2_ptr->ival;
 
     fprintf(resp_fp, "The result is: %d\n", result);
-
     return wserr_OK;
 }
-
-#endif
-#ifdef OLD_STYLE
-/***************************************************************************************/
-/* Include Interfaces */
-#include <signal.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/uio.h>
-#include <termios.h>
-#include <unistd.h>
-
-#include "embedded_cli.h"
-#include "argtable3.h"
-
-/***************************************************************************************/
-/* Local constant defines */
-#define MAX_ARGS 10 // Maximum number of arguments
-
-/***************************************************************************************/
-/* Local function like makros */
-
-/***************************************************************************************/
-/* Local type definitions (enum, struct, union) */
-
-/***************************************************************************************/
-/* Local functions prototypes: */
-static char getch(void);
-static void intHandler(int dummy);
-static void posix_putch(void *data, char ch, bool is_last);
-
-/***************************************************************************************/
-/* Local variables: */
-static struct embedded_cli cli;
-
-/***************************************************************************************/
-/* Global functions (unlimited visibility) */
-/**--------------------------------------------------------------------------------------
- * @brief     Main function and entry point for executable
- * @author    S. Wink
- * @date      03. Mar. 2024
-*//*-----------------------------------------------------------------------------------*/
-int main(void)
-{
-    bool done = false;
-    char progname[] = "arg3cli.exe";
-
-    struct arg_lit *help_cmd = arg_litn(NULL, "help", 0, 1, "display help for the program");
-    struct arg_lit *add_cmd  = arg_lit0(NULL, "add", "Add two numbers");
-    struct arg_int *add_args[2];
-    add_args[0] = arg_int0(NULL, NULL, "<a>", "First number");
-    add_args[1] = arg_int0(NULL, NULL, "<b>", "Second number");
-    struct arg_lit *exit_cmd = arg_litn(NULL, "exit", 0, 1, "exit the program");
-    struct arg_end *end = arg_end(20);
-
-    void *argtable[] = {help_cmd, exit_cmd, add_cmd, add_args[0], add_args[1], end};
-
-    arg_print_glossary(stdout, argtable, "  %-25s %s\n");
-
-    /**
-     * Start up the Embedded CLI instance with the appropriate
-     * callbacks/userdata
-     */
-    embedded_cli_init(&cli, "cli> ", posix_putch, stdout);
-
-    /* Capture Ctrl-C */
-    printf("Register Ctrl-C\n");
-    // Define struct for signal action
-    struct sigaction sa;
-    sa.sa_handler = intHandler;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-
-    // Register signal handler for SIGINT (Ctrl-C) using sigaction
-    if (sigaction(SIGINT, &sa, NULL) == -1) {
-        perror("Unable to register SIGINT handler");
-    }
-    //signal(SIGINT, intHandler);
-    // Register signal handler for SIGINT (Ctrl-C)
-    //if (signal(SIGINT, intHandler) == SIG_ERR) {
-    //    perror("Unable to register SIGINT handler");
-    //}
-
-    embedded_cli_prompt(&cli);
-
-    while (!done) {
-        char ch = getch();
-
-        /**
-         * If we have entered a command, try and process it
-         */
-        if (embedded_cli_insert_char(&cli, ch)) {
-            int cli_argc;
-            char **cli_argv;
-            cli_argc = embedded_cli_argc(&cli, &cli_argv);
-
-            int argc = 1; // Start with 1 to account for program name
-            char *argv[MAX_ARGS];  // Array to store arguments
-            argv[0] = progname; // Program name as first argument
-            printf("Got %d args\n", cli_argc);
-            for (int i = 0; i < cli_argc; i++) {
-                printf("Arg %d/%d: '%s'\n", i, cli_argc, cli_argv[i]);
-                argv[i + 1] = cli_argv[i];
-                argc++;
-            }
-            // Print the copied argc and argv
-            printf("Copied argc: %d\n", argc);
-            for (int i = 0; i < argc; i++)
-            {
-                printf("Copied Arg %d/%d: '%s'\n", i, argc, argv[i]);
-            }
-
-            // Parse the arguments
-            int nerrors = arg_parse(argc, argv, argtable);
-
-            if (help_cmd->count > 0) /* '--help' */
-            {
-                printf("Usage: %s", progname);
-                arg_print_syntax(stdout, argtable, "\n");
-                printf("Demonstrate command-line parsing in argtable3.\n\n");
-                arg_print_glossary(stdout, argtable, "  %-25s %s\n");
-            }
-            else if(add_cmd->count > 0) /* '--add' */
-            {
-                if(nerrors == 0 && add_args[0]->count > 0 && add_args[1]->count > 0) 
-                {
-                    int result = *add_args[0]->ival + *add_args[1]->ival;
-                    printf("Result of addition: %d\n", result);
-                } 
-                else 
-                {
-                    printf("Usage: --add <a> <b>\n");
-                }
-            } 
-            else if (exit_cmd->count > 0) /* '--help' */
-            {
-                printf("Exiting...\n");
-                break;
-            }
-            else 
-            {
-                printf("No command specified.\n");
-            }
-            
-            //done = cli_argc >= 1 && (strcmp(cli_argv[0], "quit") == 0);
-
-            //if (!done)
-            embedded_cli_prompt(&cli);
-        }
-    }
-
-    arg_freetable(argtable, sizeof(argtable) / sizeof(argtable[0]));
-    return 0;
-}
-
-/***************************************************************************************/
-/* Local functions: */
-
-/**--------------------------------------------------------------------------------------
- * @brief     This function retrieves exactly one character from stdin, in 
- *            character-by-character mode (as opposed to reading a full line)
- * @author    S. Wink
- * @date      03. Mar. 2024
- * @return    one character retrieved by stdin
-*//*-----------------------------------------------------------------------------------*/
-static char getch(void)
-{
-    char buf = 0;
-    struct termios old = {0};
-    if (tcgetattr(0, &old) < 0)
-        perror("tcsetattr()");
-
-    struct termios raw = old;
-
-    // Do what cfmakeraw does (Using --std=c99 means that cfmakeraw isn't
-    // available)
-    raw.c_iflag &=
-        ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL | IXON);
-    raw.c_oflag &= ~OPOST;
-    raw.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
-    raw.c_cflag &= ~(CSIZE | PARENB);
-    raw.c_cflag |= CS8;
-
-    raw.c_cc[VMIN] = 1;
-    raw.c_cc[VTIME] = 0;
-
-    if (tcsetattr(0, TCSANOW, &raw) < 0)
-        perror("tcsetattr ICANON");
-
-    if (read(0, &buf, 1) < 0)
-        perror("read()");
-
-    if (tcsetattr(0, TCSADRAIN, &old) < 0)
-        perror("tcsetattr ~ICANON");
-    return (buf);
-}
-
-/**--------------------------------------------------------------------------------------
- * @brief     The intHandler function is a signal handler for SIGINT (Ctrl-C). It's used
- *            to capture Ctrl-C and interrupt the CLI input.
- * @author    S. Wink
- * @date      03. Mar. 2024
- * @param     dummy             input data pointer
- * @return    none
-*//*-----------------------------------------------------------------------------------*/
-static void intHandler(int dummy)
-{
-    (void)dummy;
-    printf("Ctrl-C received!\n");
-    embedded_cli_insert_char(&cli, '\x03');
-}
-
-/**--------------------------------------------------------------------------------------
- * @brief     This function outputs a single character to stdout, to be used as the
- *            callback from embedded cli.
- * @author    S. Wink
- * @date      03. Mar. 2024
- * @param     *data     pointer to data channel
- * @param     ch        character to print to channel
- * @param     is_last   is this the last character, than flush the complete message
- * @return    none
-*//*-----------------------------------------------------------------------------------*/
-static void posix_putch(void *data, char ch, bool is_last)
-{
-    FILE *fp = data;
-    fputc(ch, fp);
-    if (is_last)
-        fflush(fp);
-}
-
-#endif
