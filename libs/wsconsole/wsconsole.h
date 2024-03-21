@@ -8,35 +8,33 @@
 *
 * NOTES :
 * Functional flow description / User interface
-*   wsconsole_tp console_x;
-*   wsconsole_config_t consoleConfig_st;
+*   wsconsole_config_t consoleConfig_sts;
+*   wsconsole_cmdItem_t command_st;
 *
-*   wserr_LOG(wsconsole_InitParameter_t(&consoleConfig_st));
-*   console_x = wsconsole_Allocate_t();
-*   wserr_LOG(wsconsole_Init_t(wsconsole_tp console_x, consoleConfig_st));
+*   wserr_LOG(wsconsole_InitParameter_t(&consoleConfig_sts));
+*   consoleConfig_sts.getCharFunc_fp = GetCharacter_c;
+*   consoleConfig_sts.intHandler_fp = InterruptHandler_vd;
+*   consoleConfig_sts.putCharFunc_fp = PosixPutCharacter_vd;
 *
-*   wsconsole_cmd_t command_st;
-*   
-*   command_st.command = "help",
-*   command_st.help = "Print the list of registered commands",
-*   command_st.func = &HelpCommand_t
-*   command_st.argtable = NULL;
-*   wserr_LOG() myConsole_RegisterCommand_t(console_x, &command_st);
-*   
-*   command_st.command = "add",
-*   command_st.help = "Adds the two numbers and returns the result."
-*   command_st.func = &AddCommand_t
+*   console_xs = wsconsole_AllocateConsole_t();
+*   wserr_LOG(wsconsole_Init_t(console_xs, &consoleConfig_sts));
+*     
+*   command_st.command = "add";
+*   command_st.hint = NULL;
+*   command_st.help = "Adds the two numbers and returns the result.";
+*   command_st.func = &AddCommand_t;
 *   struct arg_int *add_args[2];
 *   add_args[0] = arg_int0(NULL, NULL, "<a>", "First number");
 *   add_args[1] = arg_int0(NULL, NULL, "<b>", "Second number");
 *   struct arg_end *end = arg_end(20);
 *   void *argtable[] = {add_args[0], add_args[1], end};
-*   wserr_LOG(myConsole_RegisterCommand_t(console_x, &command_st));
+*   command_st.argtable = argtable;
+*
+*   wserr_LOG(wsconsole_RegisterCommand_t(console_xs, &command_st));
 *
 *   while(true)
 *   {
-*       wserr_LOG(wsconsole_Run_td(console_x));  
-*       break;
+*       wserr_LOG(wsconsole_Run_t(console_xs));
 *   }
 *
 *   wserr_LOG(wsconsole_DeInit_t(console_x));
